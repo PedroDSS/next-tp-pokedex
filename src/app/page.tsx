@@ -1,101 +1,171 @@
-import Image from "next/image";
+'use client'
+
+import { useEffect, useState } from 'react'
+import PokemonCard from '@/components/PokemonCard'
+
+interface Pokemon {
+  id: number
+  name: string
+  image: string
+  types: { id: number; name: string; image: string }[]
+}
+
+interface Type {
+  id: number
+  name: string
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [pokemons, setPokemons] = useState<Pokemon[]>([])
+  const [types, setTypes] = useState<Type[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedType, setSelectedType] = useState<string>('')
+  const [limit, setLimit] = useState(20)
+  const [loading, setLoading] = useState(false)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  // On récupère les pokémons 
+  const fetchPokemons = async (reset: boolean = false) => {
+    setLoading(true)
+    try {
+      let url = `https://nestjs-pokedex-api.vercel.app/pokemons?page=${page}&limit=${limit}`
+
+      if (selectedType) {
+        const selectedTypeObj = types.find((type) => type.name.toLowerCase() === selectedType.toLowerCase())
+        if (selectedTypeObj) {
+          url += `&types[]=${selectedTypeObj.id}`
+        }
+      }
+
+      const response = await fetch(url)
+      const data = await response.json()
+
+      if (reset) {
+        setPokemons(data)
+      } else {
+        setPokemons((prev) => [...prev, ...data])
+      }
+
+      if (data.length < limit) setHasMore(false)
+      else setHasMore(true)
+    } catch (error) {
+      console.error('Error fetching pokemon:', error)
+    }
+    setLoading(false)
+  }
+
+  // Récupère les Types existants
+  const fetchTypes = async () => {
+    try {
+      const response = await fetch(`https://nestjs-pokedex-api.vercel.app/types`)
+      const data = await response.json()
+      setTypes(data)
+    } catch (error) {
+      console.error('Error fetching types:', error)
+    }
+  }
+
+  useEffect(() => {
+    fetchPokemons(true)
+    fetchTypes()
+  }, [limit, page])
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (
+        window.innerHeight + document.documentElement.scrollTop >=
+          document.documentElement.offsetHeight - 200 &&
+        !loading &&
+        hasMore
+      ) {
+        setPage((prevPage) => prevPage + 1)
+      }
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [loading, hasMore])
+
+  const filteredPokemons = pokemons.filter((pokemon) => {
+    const matchesSearch = pokemon.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesType = selectedType
+      ? pokemon.types.some((type) => type.name.toLowerCase() === selectedType.toLowerCase())
+      : true
+    return matchesSearch && matchesType
+  })
+
+  return (
+    <main className="min-h-screen p-4 bg-gray-100">
+      <div className="max-w-7xl mx-auto">
+        {/* Panel du haut avec la recherche et les autres filtres */}
+        <div className="mb-8 bg-red-500 rounded-lg p-6 shadow-lg">
+          <h1 className="text-2xl font-bold text-white mb-4">Pokédex</h1>
+          <div className="flex gap-4">
+            <input
+              type="search"
+              placeholder="Rechercher un Pokémon"
+              className="w-full px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            <select
+              className="px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white"
+              value={selectedType}
+              onChange={(e) => {
+                setSelectedType(e.target.value)
+                setPage(1) // Remet la page à 1 lors du changement de type
+              }}
+            >
+              <option value="">Tous les types</option>
+              {types.map((type) => (
+                <option key={type.id} value={type.name}>
+                  {type.name}
+                </option>
+              ))}
+            </select>
+            <select
+              className="px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white"
+              value={limit}
+              onChange={(e) => {
+                setLimit(Number(e.target.value))
+                setPage(1) // Remet la page à 1 lorsqu'on modifie la limite
+              }}
+            >
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+
+        {/* Tableau des Pokémon */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          {filteredPokemons.map((pokemon) => (
+            <PokemonCard
+              key={pokemon.id}
+              id={pokemon.id}
+              name={pokemon.name}
+              image={pokemon.image}
+              types={pokemon.types}
+            />
+          ))}
+        </div>
+
+        {/* Petit chargement si cela met du temps */}
+        {loading && (
+          <div className="text-center py-10">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto"></div>
+          </div>
+        )}
+
+        {/* Affiche un message quand il y a pas de résultats */}
+        {filteredPokemons.length === 0 && !loading && (
+          <div className="text-center py-10 text-gray-500">
+            Aucun Pokémon, le professeur Chen ne va pas être content...
+          </div>
+        )}
+      </div>
+    </main>
+  )
 }
