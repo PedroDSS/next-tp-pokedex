@@ -99,7 +99,7 @@ export default function Home() {
       <div className="max-w-7xl mx-auto">
         {/* Panel du haut avec la recherche et les autres filtres */}
         <div className="mb-8 bg-red-500 rounded-lg p-6 shadow-lg">
-          <h1 className="text-2xl font-bold text-white mb-4">Pokédex</h1>
+          <h1 className="text-2xl font-bold text-white mb-4">Projet Pokédex React</h1>
           <div className="flex gap-4">
             <input
               type="search"
