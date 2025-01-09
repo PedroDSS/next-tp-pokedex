@@ -113,7 +113,7 @@ export default function Home() {
               value={selectedType}
               onChange={(e) => {
                 setSelectedType(e.target.value)
-                setPage(1) // Remet la page à 1 lors du changement de type
+                setPage(1)
               }}
             >
               <option value="">Tous les types</option>
@@ -128,7 +128,7 @@ export default function Home() {
               value={limit}
               onChange={(e) => {
                 setLimit(Number(e.target.value))
-                setPage(1) // Remet la page à 1 lorsqu'on modifie la limite
+                setPage(1)
               }}
             >
               <option value="10">10</option>
